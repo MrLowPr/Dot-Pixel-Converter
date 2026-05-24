@@ -1,0 +1,134 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Dot Pixel Converter Pro</title>
+    <!-- Tailwind CSS -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <!-- Lucide Icons -->
+    <script src="https://unpkg.com/lucide@latest"></script>
+    <style>
+        body { background-color: #0f172a; }
+        canvas { background-color: #000; border-radius: 8px; box-shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.3); }
+    </style>
+</head>
+<body class="min-h-screen text-slate-200 p-4 md:p-8">
+
+    <div class="max-w-4xl mx-auto">
+        <!-- Header -->
+        <header class="text-center mb-8">
+            <h1 class="text-4xl font-bold text-white mb-2 flex items-center justify-center gap-2">
+                <i data-lucide="grid-3x3" class="text-indigo-400"></i> Dot Pixelizer
+            </h1>
+            <p class="text-slate-400">Transformasi gambar menjadi seni dot prosedural 100% lokal.</p>
+        </header>
+
+        <!-- Main Card -->
+        <div class="bg-slate-800 p-6 rounded-2xl shadow-xl border border-slate-700">
+            <!-- Controls -->
+            <div class="flex flex-col md:flex-row gap-6 items-center mb-6">
+                <label class="flex flex-col items-center justify-center w-full h-32 border-2 border-dashed border-slate-600 rounded-lg cursor-pointer hover:border-indigo-500 transition-colors bg-slate-900">
+                    <i data-lucide="upload" class="mb-2 text-indigo-400"></i>
+                    <span class="text-sm font-medium">Pilih Gambar</span>
+                    <input type="file" id="upload" accept="image/*" class="hidden">
+                </label>
+
+                <div class="w-full flex flex-col gap-2">
+                    <label class="text-sm font-medium flex items-center gap-2">
+                        <i data-lucide="sliders-horizontal" size="16"></i> Kerapatan Grid: <span id="val" class="text-indigo-400">50</span>
+                    </label>
+                    <input type="range" id="gridSize" min="20" max="150" value="50" 
+                           class="w-full h-2 bg-slate-700 rounded-lg appearance-none cursor-pointer accent-indigo-500">
+                    
+                    <button id="downloadBtn" class="mt-4 flex items-center justify-center gap-2 bg-indigo-600 hover:bg-indigo-700 text-white py-2 rounded-lg transition-all">
+                        <i data-lucide="download" size="18"></i> Simpan Gambar
+                    </button>
+                </div>
+            </div>
+
+            <!-- Canvas Container -->
+            <div class="flex justify-center overflow-x-auto">
+                <canvas id="canvas"></canvas>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // Inisialisasi Lucide Icons
+        lucide.createIcons();
+
+        const upload = document.getElementById('upload');
+        const canvas = document.getElementById('canvas');
+        const ctx = canvas.getContext('2d');
+        const range = document.getElementById('gridSize');
+        const valDisplay = document.getElementById('val');
+        const downloadBtn = document.getElementById('downloadBtn');
+
+        let originalImage = null;
+
+        upload.addEventListener('change', (e) => {
+            const file = e.target.files[0];
+            if (!file) return;
+            const reader = new FileReader();
+            reader.onload = (event) => {
+                const img = new Image();
+                img.onload = () => { originalImage = img; drawDots(); };
+                img.src = event.target.result;
+            };
+            reader.readAsDataURL(file);
+        });
+
+        range.addEventListener('input', () => {
+            valDisplay.textContent = range.value;
+            drawDots();
+        });
+
+        function drawDots() {
+            if (!originalImage) return;
+
+            const gridSize = parseInt(range.value);
+            const w = 600;
+            const h = (originalImage.height / originalImage.width) * w;
+            
+            canvas.width = w;
+            canvas.height = h;
+
+            const tempCanvas = document.createElement('canvas');
+            const tCtx = tempCanvas.getContext('2d');
+            tempCanvas.width = gridSize;
+            tempCanvas.height = (originalImage.height / originalImage.width) * gridSize;
+            tCtx.drawImage(originalImage, 0, 0, tempCanvas.width, tempCanvas.height);
+
+            const imageData = tCtx.getImageData(0, 0, tempCanvas.width, tempCanvas.height).data;
+
+            ctx.fillStyle = '#000';
+            ctx.fillRect(0, 0, w, h);
+
+            const stepX = w / tempCanvas.width;
+            const stepY = h / tempCanvas.height;
+
+            for (let y = 0; y < tempCanvas.height; y++) {
+                for (let x = 0; x < tempCanvas.width; x++) {
+                    const i = (y * tempCanvas.width + x) * 4;
+                    const [r, g, b] = [imageData[i], imageData[i+1], imageData[i+2]];
+                    const brightness = (r + g + b) / 3;
+                    const radius = (stepX / 2.2) * (brightness / 255);
+
+                    ctx.beginPath();
+                    ctx.fillStyle = `rgb(${r}, ${g}, ${b})`;
+                    ctx.arc(x * stepX + stepX/2, y * stepY + stepY/2, radius, 0, Math.PI * 2);
+                    ctx.fill();
+                }
+            }
+        }
+
+        downloadBtn.addEventListener('click', () => {
+            const link = document.createElement('a');
+            link.download = 'pixel-art.png';
+            link.href = canvas.toDataURL();
+            link.click();
+        });
+    </script>
+</body>
+</html>
